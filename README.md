@@ -2,7 +2,7 @@
 
 ## Purpose
 
-I use this as the basis for writing test automation scripts.
+I use this as the basis for writing test web page automated tests.
 
 ## Requirements
 
@@ -12,4 +12,4 @@ chromedriver: apt-get install chromium-chromedriver OR https://sites.google.com/
 
 ## Note
 1. Selenium is finicky with browser versions. The driver and browser versions must always match
-2. Currently only working for Linux
+2. Currently only working / tested for Linux
