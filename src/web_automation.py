@@ -116,9 +116,9 @@ class WebAutomation:
             "link text": self.selenium_driver.find_element_by_link_text,
             "partial link text": self.selenium_driver.find_element_by_partial_link_text,
             "name": self.selenium_driver.find_element_by_name,
-            "class name": self.selenium_driver.find_element_by_class_name,
+            "class": self.selenium_driver.find_element_by_class_name,
             "css selector": self.selenium_driver.find_element_by_css_selector,
-            "tag name": self.selenium_driver.find_element_by_tag_name
+            "tag": self.selenium_driver.find_element_by_tag_name
         }
 
         assert element_type in path_types, "Invalid element type provided"  # Notify about user error
@@ -189,12 +189,10 @@ class WebAutomation:
 
         return result  # Return True/False
 
-    def smart_wait(self, url=None, is_in=None):
-        """ Wait for element to become visible
+    def wait_for_expected_conditions(self, url=None, is_in_url=None):
+        """ Wait for a condition to become available
 
             Available Conditions: https://seleniumhq.github.io/selenium/docs/api/py/webdriver_support/selenium.webdriver.support.expected_conditions.html
-
-            "wait" instance creates an exception if it fails to find the specified parameter
 
             Args (must pick only one):
                 url (str): Waits for URL to change
@@ -207,8 +205,8 @@ class WebAutomation:
         # Wait depending on which type user selected
         if url:
             wait.until(EC.url_changes(url))
-        if is_in:
-            wait.until(EC.url_contains(is_in))
+        elif is_in_url:
+            wait.until(EC.url_contains(is_in_url))
 
     def open_url(self, url):
         """ Go to URL in browser, and wait for page to load per the self.webdriver_wait time """
@@ -226,7 +224,10 @@ class WebAutomation:
 
         element = self._find_element(element_id, element_type)  # Get element object
         element.click()  # Set focus
-        element.clear()  # Remove any existing text
+        try:
+            element.clear()  # Remove any existing text
+        except exceptions.InvalidElementStateException:  # Ignore this when we need to enter text in non-text fields
+            pass
         element.send_keys(text)  # Enter text
 
     def click(self, element_id, element_type):
@@ -267,32 +268,44 @@ class WebAutomation:
         alert = self.selenium_driver.switch_to.alert
         return alert.text
 
-    def click_hold(self, element_id, element_type):
-        """ Left click and hold - UNTESTED """
+    def check_for_alert(self):
+        """ Checks for the existence of an alert popup """
+        result = True
+        try:
+            self.accept_alert()
+        except exceptions.NoAlertPresentException:
+            result = False
+        return result
+
+    def click_hold(self, seconds, element_id, element_type):
+        """ Left click and hold specified number of seconds """
         element = self._find_element(element_id, element_type)  # Get element object
         action = ActionChains(self.selenium_driver).click_and_hold(element)
         action.perform()
+        sleep(seconds)
+        action = ActionChains(self.selenium_driver).release(element)
+        action.perform()
 
     def right_click(self, element_id, element_type):
-        """ Right (context) click - UNTESTED """
+        """ Right (context) click on element """
         element = self._find_element(element_id, element_type)  # Get element object
         action = ActionChains(self.selenium_driver).context_click(element)
         action.perform()
 
     def double_click(self, element_id, element_type):
-        """ Double left click - UNTESTED """
+        """ Double left click on element """
         element = self._find_element(element_id, element_type)  # Get element object
         action = ActionChains(self.selenium_driver).double_click(element)
         action.perform()
 
     def mouse_hover(self, element_id, element_type):
-        """ Hover mouse over element - UNTESTED """
+        """ Hover mouse over element """
         element = self._find_element(element_id, element_type)  # Get element object
         action = ActionChains(self.selenium_driver).move_to_element(element)
         action.perform()
 
     def drag_drop(self, src_element_id, src_element_type, dst_element_id, dst_element_type):
-        """ Hover mouse over element - UNTESTED """
+        """ Hover mouse over element  """
         src_element = self._find_element(src_element_id, src_element_type)  # Get element object
         dst_element = self._find_element(dst_element_id, dst_element_type)  # Get element object
         action = ActionChains(self.selenium_driver).drag_and_drop(src_element, dst_element)
@@ -307,24 +320,81 @@ class WebAutomation:
             key_combo += Keys.ALT
         if shift:
             key_combo += Keys.SHIFT
-        key_combo += character
+
+        keymap = {
+            "ALT": Keys.ALT,
+            "BACKSPACE": Keys.BACKSPACE,
+            "COMMAND": Keys.COMMAND,
+            "DELETE": Keys.DELETE,
+            "DOWN": Keys.DOWN,
+            "END": Keys.END,
+            "ENTER": Keys.ENTER,
+            "ESCAPE": Keys.ESCAPE,
+            "F1": Keys.F1,
+            "F10": Keys.F10,
+            "F11": Keys.F11,
+            "F12": Keys.F12,
+            "F2": Keys.F2,
+            "F3": Keys.F3,
+            "F4": Keys.F4,
+            "F5": Keys.F5,
+            "F6": Keys.F6,
+            "F7": Keys.F7,
+            "F8": Keys.F8,
+            "F9": Keys.F9,
+            "HOME": Keys.HOME,
+            "INSERT": Keys.INSERT,
+            "LEFT": Keys.LEFT,
+            "META": Keys.META,
+            "PAGE_DOWN": Keys.PAGE_DOWN,
+            "PAGE_UP": Keys.PAGE_UP,
+            "RETURN": Keys.RETURN,
+            "RIGHT": Keys.RIGHT,
+            "SPACE": Keys.SPACE,
+            "TAB": Keys.TAB,
+            "UP": Keys.UP
+        }
+
+        if character.upper() in keymap:
+            key_combo += keymap[character.upper()]  # Any button as mapped above
+        else:
+            key_combo += character  # Any alphanumeric
+        logging.warning(key_combo)
 
         self.selenium_driver.find_element_by_tag_name('body').send_keys(key_combo)
 
-    def scroll_page(self):
-        """ Scroll web page - UNTESTED """
+    def scroll_page(self, direction="down"):
+        """ Scroll web page up, down, left, right
+            Currently, only scrolls the main page
+        """
         window_name = 'window'
         scroll_window = ""
-        vertical = 750
+        dimensions = self.selenium_driver.get_window_size()
+        vertical = 0
         horizontal = 0
+
+        if direction == "down":
+            vertical = dimensions["height"]
+        elif direction == "up":
+            vertical = dimensions["height"] * -1
+        elif direction == "right":
+            horizontal = dimensions["width"]
+        elif direction == "left":
+            horizontal = dimensions["width"] * -1
+        else:
+            logging.error("Invalid direction (up/down/right/left)")
+            return
+
         self.selenium_driver.execute_script(f"{window_name}.scrollBy({horizontal}, {vertical})", scroll_window)
 
     def scroll_to_element(self, element_id, element_type):
-        """ Move element until in view - UNTESTED """
-        self.mouse_hover(element_id, element_type)
+        """ Move element until in view """
+        element = self._find_element(element_id, element_type)  # Get element object
+        self.selenium_driver.execute_script("arguments[0].scrollIntoView();", element)
+
 
     def page_navigation(self, command):
-        """ Various actions outside the web page - UNTESTED """
+        """ Various actions outside the web page """
         if command == 'back':
             self.selenium_driver.back()
         elif command == 'forward':
