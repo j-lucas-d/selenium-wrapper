@@ -1,10 +1,6 @@
+""" Tests web_automation.py. However, we have to use some of it's functions in order to test other functions. """
 import pytest
-from time import sleep
 from tenacity import retry, wait_fixed, stop_after_attempt
-
-"""
-    Tests web_automation.py. However, we have to use some of it's functions in order to test other functions.
-"""
 
 HOST = "http://localhost:5000"
 DEFAULT_VALUE = "default value"
@@ -54,8 +50,8 @@ def test_alert_dismiss(web):
     """ Verify text in an alert popup """
     web.open_url(f"{HOST}/alert")
     web.accept_alert()  # Alert has to be removed, otherwise the call to close the browser fails
-    text = "This is an alert"
-    verify(web.get_alert_text, (), text)  # !!!!!!need to have a check for NO element exists
+    result = web.check_for_alert()
+    assert not result
 
 
 def test_alert_exists(web):
@@ -115,7 +111,7 @@ def test_wait_for_element_removal(web):
     assert web.wait_for_element_removal("output", "id")  # Returns true if removed
 
 
-def test_wait_for_expected_conditions_(web):
+def test_wait_for_expected_cond(web):
     """ Test dynamically waiting for an element to be deleted """
     url = f"{HOST}/remove_element"
     web.open_url(url)
@@ -166,8 +162,8 @@ def test_drag_drop(web):
 
 
 @pytest.mark.xfail(reason="Haven't found way to intercept keypresses in order to verify them")
-def test_keyboard_shortcut(web):
-    pass
+def test_keyboard_shortcut():
+    """ Verifies various keyboard shortcuts """
 
 
 @pytest.mark.parametrize("direction", ["up", "left"])
@@ -195,6 +191,7 @@ def test_scroll2(web, direction):
 
 
 def test_nav_back(web):
+    """ Test pressing the back button returns to the previous page """
     web.open_url(f"{HOST}/link")  # Link page
     web.click("Go To Root", "link text")  # Root page
     web.page_navigation("back")
@@ -202,6 +199,7 @@ def test_nav_back(web):
 
 
 def test_nav_forward(web):
+    """ Test pressing the forward button takes the user to the next page """
     web.open_url(f"{HOST}/link")
     web.click("Go To Root", "link text")
     web.page_navigation("back")  # Move back to previous page

@@ -10,16 +10,17 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common import exceptions
 
 
-class WebAutomation:
+class WebAutomation:  # pylint: disable=too-many-public-methods
+    """ Returns browser object with which to interface """
     def __init__(self, browser_name="firefox", headless=False, executable=None):
-        """ Returns browser object with which to interface
-            
+        """ Setup requirements
             Args:
                 browser_name (str): "firefox" or "chrome"
                 headless (bool): True = Do not show browser; False = Show browser during automation
-                binary (str): Optional, if set, should be a direct path to the browser executable
+                executable (str): Optional, if set, should be a direct path to the browser executable
         """
 
+        self.selenium_driver = None
         self.browser_name = browser_name.lower()
         self.headless = headless
         self.webdriver_wait = 20  # How long to wait for elements to appear and events to occur in seconds
@@ -91,7 +92,8 @@ class WebAutomation:
             self.selenium_driver = webdriver.Firefox(options=options, firefox_binary=self.executable)
         except exceptions.WebDriverException:
             logging.error(
-                "Error creating Selenium driver. Your web browser or browser driver may be out of date. Updating both should fix this.")
+                "Error creating Selenium driver. Your web browser or browser driver may be out of date. \
+                Updating both should fix this.")
             raise
         self.selenium_driver.implicitly_wait(self.webdriver_wait)
         self.selenium_driver.maximize_window()
@@ -148,7 +150,7 @@ class WebAutomation:
         try:
             result = True
             self._find_element(element_id, element_type)  # Use implicitly_wait()
-        except:
+        except exceptions.NoSuchElementException:
             result = False
         finally:
             # Reset the wait time to default
@@ -192,7 +194,9 @@ class WebAutomation:
     def wait_for_expected_conditions(self, url=None, is_in_url=None):
         """ Wait for a condition to become available
 
-            Available Conditions: https://seleniumhq.github.io/selenium/docs/api/py/webdriver_support/selenium.webdriver.support.expected_conditions.html
+            Available Conditions:
+            https://seleniumhq.github.io/selenium/docs/api/py/webdriver_support/\
+                selenium.webdriver.support.expected_conditions.html
 
             Args (must pick only one):
                 url (str): Waits for URL to change
@@ -391,7 +395,6 @@ class WebAutomation:
         """ Move element until in view """
         element = self._find_element(element_id, element_type)  # Get element object
         self.selenium_driver.execute_script("arguments[0].scrollIntoView();", element)
-
 
     def page_navigation(self, command):
         """ Various actions outside the web page """
