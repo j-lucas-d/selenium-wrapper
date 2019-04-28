@@ -29,6 +29,7 @@ I use this as the basis for writing web page automated tests.
 ## Requirements
 
 Firefox and/or Chromium
+
 geckodriver: https://github.com/mozilla/geckodriver/releases
 
 chromedriver: apt-get install chromium-chromedriver OR https://sites.google.com/a/chromium.org/chromedriver/downloads
